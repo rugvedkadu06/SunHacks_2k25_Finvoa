@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dashboard_screen.dart';
+import 'dashboard_screen.dart'; // Make sure this file exists in your project
 
 void main() {
   runApp(const MyApp());
@@ -74,10 +74,22 @@ class MyApp extends StatelessWidget {
               TextField(
                 controller: budgetController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Monthly Budget',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.monetization_on),
+                  border: const OutlineInputBorder(),
+                  // Changed the icon to the rupee symbol
+                  prefixIcon: const Align(
+                    widthFactor: 1.0,
+                    heightFactor: 1.0,
+                    child: Text(
+                      '₹',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
                   hintText: 'e.g., 3000',
                 ),
               ),
