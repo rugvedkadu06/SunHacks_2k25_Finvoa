@@ -1,38 +1,51 @@
+// dashboard_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // NEW: Add a callback function to handle navigation from quick actions
+  final VoidCallback? onAddExpensePressed;
+  final VoidCallback? onViewBudgetPressed;
+
+  const DashboardScreen({
+    super.key,
+    this.onAddExpensePressed,
+    this.onViewBudgetPressed,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
-  String _userName = 'User';
+class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
+  // ... (rest of your existing code for state variables, initState, and dispose)
+  String _userName = 'Guest';
   String _monthlyBudget = '0';
-  String _budgetPeriod = '...';
-  late AnimationController _animationController;
+  String _budgetPeriod = 'This Month';
+
+  late AnimationController _contentAnimationController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _contentAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _contentAnimationController, curve: Curves.easeInOut),
     );
+
     _loadProfileAndBudget();
-    _animationController.forward();
+    _contentAnimationController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _contentAnimationController.dispose();
     super.dispose();
   }
 
@@ -42,18 +55,23 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final budget = prefs.getString('monthlyBudget');
     final startDateString = prefs.getString('budgetStartDate');
 
-    if (name != null) {
+    if (name != null && name.isNotEmpty) {
       _userName = name;
     }
-    if (budget != null) {
+    if (budget != null && budget.isNotEmpty) {
       _monthlyBudget = budget;
     }
-    if (startDateString != null) {
-      final startDate = DateTime.parse(startDateString);
-      _budgetPeriod = DateFormat('MMMM yyyy').format(startDate);
+    if (startDateString != null && startDateString.isNotEmpty) {
+      try {
+        final startDate = DateTime.parse(startDateString);
+        _budgetPeriod = DateFormat('MMMM yyyy').format(startDate);
+      } on FormatException {
+        _budgetPeriod = 'Invalid Date';
+      }
     }
-
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -74,15 +92,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 const SizedBox(height: 24),
                 _buildQuickActions(),
                 const SizedBox(height: 24),
-                // Removed _buildRecentActivity()
               ],
             ),
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
+
+  // ... (rest of your build methods)
 
   Widget _buildHeader() {
     return Container(
@@ -133,7 +151,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               ],
             ),
           ),
-          // Removed the notification icon
         ],
       ),
     );
@@ -205,7 +222,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               ],
             ),
             const SizedBox(height: 24),
-            // Removed the "Spent" and "Remaining" section
           ],
         ),
       ),
@@ -229,11 +245,26 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildActionCard('Add Expense', Icons.add_circle_outline, const Color(0xFF2563EB)),
+              _buildActionCard(
+                title: 'Add Expense',
+                icon: Icons.add_circle_outline,
+                color: const Color(0xFF2563EB),
+                onTap: widget.onAddExpensePressed, // Use the new callback
+              ),
               const SizedBox(width: 12),
-              _buildActionCard('View Budget', Icons.pie_chart_outline, const Color(0xFF7C3AED)),
+              _buildActionCard(
+                title: 'View Budget',
+                icon: Icons.pie_chart_outline,
+                color: const Color(0xFF7C3AED),
+                onTap: widget.onViewBudgetPressed, // Use the new callback
+              ),
               const SizedBox(width: 12),
-              _buildActionCard('Analytics', Icons.bar_chart_outlined, const Color(0xFF059669)),
+              _buildActionCard(
+                title: 'Analytics',
+                icon: Icons.bar_chart_outlined,
+                color: const Color(0xFF059669),
+                onTap: null, // No action for Analytics yet
+              ),
             ],
           ),
         ],
@@ -241,85 +272,52 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, Color color) {
+  // MODIFIED: This now accepts a callback function
+  Widget _buildActionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2D3748),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D3748),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF2563EB),
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded, size: 24),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.credit_card_rounded, size: 24),
-            label: 'Budget',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.insights_rounded, size: 24),
-            label: 'Insights',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_rounded, size: 24),
-            label: 'Finova Buddy',
-          ),
-        ],
       ),
     );
   }
